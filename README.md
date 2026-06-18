@@ -1,39 +1,43 @@
 # CodePath Open-Source Contribution
 
 ## Issue
-**Project:** [portainer/portainer](https://github.com/portainer/portainer)
-**Issue:** [#13199 – Missing error notification toast on deleting a used image](https://github.com/portainer/portainer/issues/13199)
+**Project:** [vyperlang/vyper](https://github.com/vyperlang/vyper)
+**Issue:** [#5026 – safe_pow() silently returns None instead of raising a TypeCheckFailure](https://github.com/vyperlang/vyper/issues/5026)
 
 ## Why I Chose This Issue
 
-I picked issue #13199, "Missing error notification toast on deleting a used image,"
-in portainer/portainer. It's a small, contained frontend bug in a TypeScript and
-React codebase, which lines up well with what I already do. I build React
-frontends, so working with component state and notification patterns feels
-familiar to me.
+I picked issue #5026, "safe_pow() silently returns None for two-variable
+exponentiation instead of raising TypeCheckFailure," in vyperlang/vyper. It's a
+small, contained bug in the compiler's code-generation path, written in Python,
+which lines up well with what I already do. I work mostly in Python, and I'm
+comfortable reading and modifying logic-heavy code, so tracing a value through a
+compiler's codegen feels approachable to me.
 
 A few reasons it stood out:
 
-1. The scope is clear. It's about showing an API error that already exists, using
-   the app's existing toast system. There's no new feature, no API change, and no
-   design work needed.
-2. It's a genuine user-experience problem. The backend already returns a 409
-   Conflict with a helpful message, but right now the frontend quietly ignores it,
-   so the user has no idea why the delete failed.
-3. Portainer is a big, actively maintained project (37.7k stars), which makes it a
-   great place to learn how a real-world React app is organized and how a team
-   handles contributions.
+1. The scope is clear. It's about replacing a silent `None` return with an
+   explicit compiler error, using an exception class the file already imports.
+   There's no new feature, no API change, and no design work needed.
+2. It's a genuine correctness problem. The `else` branch returns `None`, and the
+   caller passes that straight into IR construction, so a bypassed guard upstream
+   would cause a cryptic downstream crash instead of a clean, actionable error.
+3. Vyper is a notable, actively maintained project (5.2k stars) and the main
+   smart-contract language for Ethereum, which makes it a great place to learn how
+   a real-world compiler is organized and how a team handles contributions.
 4. Personally, I want to get better at jumping into a large unfamiliar codebase,
-   following an action from the UI down to the API call, and reusing what's already
-   there instead of reinventing it.
+   following a value from one function down to its caller, and reusing what's
+   already there instead of reinventing it.
 
-After reading through the issue, here's my understanding of the problem. When you
-delete a Docker image that's currently in use, the backend responds correctly with
-a 409 and an error message. The problem is on the frontend: the delete-image flow
-never passes that message to the notification system, so no error toast shows up.
-This used to work before version 2.33.7. My plan is to update the delete-image
-error handling so it displays the API's message as an error toast, the same way
-the app already reports other errors.
+After reading through the issue, here's my understanding of the problem. When both
+the base and the exponent of a `**` expression are runtime variables, `safe_pow()`
+in `vyper/codegen/arithmetic.py` hits an `else` branch that just returns `None`.
+The caller in `expr.py` feeds that `None` directly into IR construction, so instead
+of a clear compiler error you'd get a confusing downstream crash if the type guard
+upstream were ever bypassed. The branch is currently unreachable by design, so this
+is defensive hardening. My plan is to replace the silent `return` with an explicit
+`raise TypeCheckFailure(...)` with a clear message (the class is already imported
+and used elsewhere in the file), and to check whether the newer venom codegen
+backend has the same pattern so I can keep the two consistent.
 
 I've also left a comment on the issue introducing myself as a CodePath student and
 asking to be assigned. I'll update this section once a maintainer replies.
