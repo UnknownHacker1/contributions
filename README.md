@@ -117,3 +117,22 @@ reviewer's suggestion, and was then simplified to match the codebase's style.
 - Lint and types: ran the project's exact pre-commit hooks (isort, black, flake8,
   mypy) at their pinned versions, all pass.
 - Confirmed no existing test referenced `safe_pow` or relied on the old `None` return.
+
+---
+
+## Phase IV: Pull Request
+
+- **Pull request:** https://github.com/vyperlang/vyper/pull/5134
+- **Summary of what I contributed:** Fixes #5026. In the classic codegen backend,
+  `safe_pow()` silently returned `None` for the (currently unreachable) case where
+  neither exponentiation operand is a compile-time constant. The PR raises
+  `CodegenPanic("unreachable")` instead, so the impossible state fails loudly rather
+  than propagating a `None` into IR construction. Marked `# pragma: nocover` since
+  the front end already rejects this case.
+- **Feedback received and addressed:**
+  - Reviewer (Sporarum) suggested raising `CodegenPanic` instead of
+    `TypeCheckFailure`, since the case is already caught by the type checker. Done.
+  - Reviewer suggested a simpler comment and message and moving `# pragma: nocover`
+    onto the `else:` line. Applied their exact suggestion.
+  - Reviewer asked me not to force-push the branch; switched to normal follow-up commits.
+- **Status:** Approved (approved by maintainer Sporarum; awaiting merge).
