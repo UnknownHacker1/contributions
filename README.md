@@ -41,3 +41,47 @@ backend has the same pattern so I can keep the two consistent.
 
 I've also left a comment on the issue introducing myself as a CodePath student and
 asking to be assigned. I'll update this section once a maintainer replies.
+
+---
+
+## Phase II: Reproduction and Plan
+
+### Reproduction Process
+
+#### Steps to Reproduce
+1. Clone the repo and set up the dev environment:
+   - `git clone https://github.com/vyperlang/vyper.git && cd vyper`
+   - `python -m venv .venv && source .venv/Scripts/activate` (Windows) or `source .venv/bin/activate` (macOS/Linux)
+   - `pip install -e .`
+2. Open `vyper/codegen/arithmetic.py` and find `safe_pow(x, y)`. Look at the final
+   `else` branch (when neither the base nor the exponent is a compile-time
+   constant). It runs a bare `return`, which silently returns `None`.
+3. Open `vyper/codegen/expr.py` and find the `Pow` handler (around line 447). It
+   feeds `safe_pow(...)`'s return value straight into `IRnode.from_list(...)` with
+   no `None` check, so a `None` here propagates into IR construction.
+4. Confirm the branch is currently guarded by the front end. In a Python shell:
+   ```python
+   from vyper import compile_code
+   compile_code("@external\ndef g(a: uint256, b: uint256) -> uint256:\n    return a ** b",
+                output_formats=["bytecode"])
+   ```
+   This is rejected with `InvalidOperation` before codegen, which is why the
+   `else` branch is unreachable today.
+5. To see the latent bug directly, temporarily relax that front-end guard and
+   recompile `a ** b`. Instead of a clean compiler error you get a cryptic crash
+   from the `None` flowing into IR construction. That is exactly the problem the
+   issue describes: a silent `None` instead of a clear error.
+
+### Reproduction Evidence
+- My working branch on my fork: https://github.com/UnknownHacker1/vyper/tree/fix/5026-safe-pow-raise-typecheckfailure
+- Upstream issue: https://github.com/vyperlang/vyper/issues/5026
+
+### Implementation Plan
+- Replace the silent `return` in `safe_pow()`'s final `else` branch with an
+  explicit raise, so the impossible state fails loudly instead of returning `None`.
+- Match existing codebase conventions: raise a panic-style exception and mark the
+  unreachable branch with `# pragma: nocover`, consistent with the defensive raise
+  already a few lines above and with the venom backend's `safe_pow`.
+- No new feature, no API change, and no behavior change for valid programs.
+- Verify: existing exponent tests pass, valid `**` still compiles, `a ** b` is
+  still rejected at the front end, and pre-commit (isort/black/flake8/mypy) is clean.
