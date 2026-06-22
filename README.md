@@ -85,3 +85,35 @@ asking to be assigned. I'll update this section once a maintainer replies.
 - No new feature, no API change, and no behavior change for valid programs.
 - Verify: existing exponent tests pass, valid `**` still compiles, `a ** b` is
   still rejected at the front end, and pre-commit (isort/black/flake8/mypy) is clean.
+
+---
+
+## Phase III: Implementation
+
+### Implementation Notes
+Implemented the fix in `vyper/codegen/arithmetic.py`. Replaced the bare `return`
+in `safe_pow()`'s final `else` branch with a clear, loud failure for the
+impossible state, and added a one-line comment noting the type checker guarantees
+at least one literal operand. The approach evolved through maintainer review (see
+Phase IV): it started as `TypeCheckFailure`, switched to `CodegenPanic` at the
+reviewer's suggestion, and was then simplified to match the codebase's style.
+
+### Code Changes
+- Pull request: https://github.com/vyperlang/vyper/pull/5134
+- Branch: https://github.com/UnknownHacker1/vyper/tree/fix/5026-safe-pow-raise-typecheckfailure
+- Final change in `vyper/codegen/arithmetic.py`:
+  ```python
+  else:  # pragma: nocover
+      # type checker guarantees pow has at least one literal operand
+      raise CodegenPanic("unreachable")
+  ```
+
+### Testing Strategy
+- Compile checks: `a ** 2` (literal exponent) still compiles to identical
+  bytecode; `a ** b` (both runtime) is still rejected at the front end with
+  `InvalidOperation`, confirming the `else` branch stays unreachable.
+- Test suite: `pytest tests/functional/codegen/types/numbers/test_exponents.py`
+  passes (23 passed).
+- Lint and types: ran the project's exact pre-commit hooks (isort, black, flake8,
+  mypy) at their pinned versions, all pass.
+- Confirmed no existing test referenced `safe_pow` or relied on the old `None` return.
