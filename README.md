@@ -135,4 +135,4 @@ reviewer's suggestion, and was then simplified to match the codebase's style.
   - Reviewer suggested a simpler comment and message and moving `# pragma: nocover`
     onto the `else:` line. Applied their exact suggestion.
   - Reviewer asked me not to force-push the branch; switched to normal follow-up commits.
-- **Status:** Approved (approved by maintainer Sporarum; awaiting merge).
+- **Status:** Merged (approved by maintainer Sporarum and merged into `master`).
