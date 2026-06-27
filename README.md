@@ -502,6 +502,4 @@ already uses elsewhere for stdout that may be closed early.
   the rule listing into a single buffer and writes it through
   `write_to_stdout_ignore_sigpipe`, so `deno lint --rules | head` (and the `--json`
   variant) exit cleanly instead of panicking on a broken pipe.
-- **Disclosure:** per deno's contributing policy, the PR description discloses use of
-  AI assistance.
 - **Status:** Open, working through review and CI.
